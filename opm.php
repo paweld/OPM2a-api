@@ -67,7 +67,7 @@ class OPM
       $this->createPath(dirname($this->cfg_info_log));
     if ($this->cfg_error_log != '')
       $this->createPath(dirname($this->cfg_error_log));
-    $result = $this->connectDB();
+    $result = $this->checkDB();
     if ($result != '')
       throw new Exception($result);
     $this->tmp_dir = '';
@@ -94,7 +94,7 @@ class OPM
   }
   
   /*create database if empty*/
-  private function connectDB()
+  private function checkDB()
   {
     $result = '';
     $db_exists = (file_exists($this->cfg_db_file));
@@ -174,6 +174,7 @@ class OPM
         $sql .= " ); ";
         $this->db->exec($sql);
       }
+      $this->db = null;
     }
     catch (Exception $e)
     {
@@ -436,13 +437,18 @@ class OPM
     if ($package_name != '')
     {
       $sql = " SELECT COUNT(1) cnt FROM package WHERE Name = ? ";
+      $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+      $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $check_query = $this->db->prepare($sql);
       $check_query->execute([$package_name]);
       if ($check_query->fetch(PDO::FETCH_ASSOC)['cnt'] == 0)
         $result = json_encode(array('status' => 'error', 'message' => 'Incorrect data'), JSON_PRETTY_PRINT);
+      $this->db - null;
     }
     if ($result == '')
     {
+      $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+      $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $sql = " SELECT Name, Rating, RatingCount FROM package ";
       if ($package_name != '')
         $sql .= " WHERE Name = " . $this->db->quote($package_name);
@@ -453,6 +459,7 @@ class OPM
       {
         $rating_arr[$getrating_row['Name']] = array("Rating" => $getrating_row['Rating'], "RatingCount" => $getrating_row['RatingCount']);
       }
+      $getrating_query = null;
       $result = json_encode($rating_arr, JSON_PRETTY_PRINT);
     }
     
@@ -469,14 +476,19 @@ class OPM
     }
     else 
     {
+      $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+      $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $sql = " SELECT COUNT(1) cnt, IFNULL(MAX(package_id), 0) pid FROM package WHERE Name = ? ";
       $check_query = $this->db->prepare($sql);
       $check_query->execute([$package_name]);
       $package_id = $check_query->fetch(PDO::FETCH_ASSOC)['pid'];
+      $check_query = null;
       if ($package_id > 0)
       {
         $sql = " INSERT INTO rating_history (package_id, ip_hash, vote_time, rate) ";
         $sql .= " SELECT :package_id, :ip, :date, :rate ";
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $rating_query = $this->db->prepare($sql);
         $rating_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
         $ip = md5($this->getClientIP());
@@ -489,6 +501,7 @@ class OPM
         $checkrating_query = $this->db->prepare($sql);
         $checkrating_query->execute([$package_id]);
         $rating_arr = $checkrating_query->fetchAll(PDO::FETCH_ASSOC);
+        $checkrating_query = null;
         $result = json_encode($rating_arr, JSON_PRETTY_PRINT);
       }
       else
@@ -508,6 +521,8 @@ class OPM
     $lastdt = 0;
     $ip = md5($this->getClientIP());
     $sql = " SELECT failed, login_time FROM login_history WHERE ip_hash = ? ";
+    $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+    $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $check_query = $this->db->prepare($sql);
     try
     {
@@ -517,6 +532,10 @@ class OPM
       $lastdt = $check_row['login_time'];
     }
     catch (Exception $e) { }
+    finally
+    {
+      $check_query = null;
+    }
     if ($cnt >= 20)
     {
       if (($lastdt + (24 * 60 * 60)) >= time())
@@ -554,9 +573,12 @@ class OPM
     {
       $sql .= " IFNULL((SELECT failed FROM login_history WHERE ip_hash = :ip), 0) + 1 ";
     }
+    $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+    $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $login_query = $this->db->prepare($sql);
     $login_query->bindParam(':ip', $ip, PDO::PARAM_STR);
     $login_query->execute();
+    $login_query = null;
     if ($result != '')
       $result = json_encode(array('status' => 'error', 'message' => $result), JSON_PRETTY_PRINT);
     
@@ -568,6 +590,9 @@ class OPM
   {
     $result = json_encode(array('status' => 'error', 'message' => 'No result'), JSON_PRETTY_PRINT);
     $history_arr = array();
+    $dbs = true;
+    $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+    $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $sql = " SELECT p.package_id, p.Name FROM package p WHERE p.RatingCount > 0 ";
     if ($package_name != '')
       $sql .= " AND p.Name = " . $this->db->quote($package_name);
@@ -575,32 +600,33 @@ class OPM
     try 
     {
       $pkg_query = $this->db->query($sql);
-      while ($pkg_row = $pkg_query->fetch(PDO::FETCH_ASSOC))
+      $pkg_arr = $pkg_query->fetchAll(PDO::FETCH_ASSOC);
+      $pkg_query = null;
+      $dbs = false;
+      foreach ($pkg_arr as $pkg_row)
       {
         $sql = " SELECT rh.ip_hash IPHash, rh.vote_time Time, rh.rate Rate from rating_history rh WHERE rh.package_id = ? ";
         $sql .= " ORDER BY rh.vote_time ASC, rh.ip_hash ASC, rh.rate ASC ";
+        $dbs = true;
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $rh_query = $this->db->prepare($sql);
         try
         {
           $rh_query->execute([$pkg_row['package_id']]);
-          $rh_arr = array();
-          while ($rh_row = $rh_query->fetch(PDO::FETCH_ASSOC))
-          {
-            $rhi_arr = array();
-            foreach($rh_row as $key=>$value)
-            {
-              $rhi_arr[$key] = $value;
-            }
-            $rh_arr[] = $rhi_arr;
-          }
+          $rh_arr = $rh_query->fetchAll(PDO::FETCH_ASSOC);
+          $rh_query = null;
+          $dbs = false;
           $history_arr[$pkg_row['Name']] = $rh_arr;
         }
         catch (Exception $e) { }
       }
-      if (count($history_arr) > 0)
-        $result = json_encode($history_arr, JSON_PRETTY_PRINT);
     }
     catch (Exception $e) { }
+    if ($dbs)
+      $this->db = null;
+    if (count($history_arr) > 0)
+      $result = json_encode($history_arr, JSON_PRETTY_PRINT);
     
     return $result;
   }
@@ -615,18 +641,25 @@ class OPM
     }
     else 
     {
+      $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+      $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $sql = " SELECT COUNT(1) cnt FROM package WHERE Name = ? ";
       $check_query = $this->db->prepare($sql);
       $check_query->execute([$package_name]);
       if ($check_query->fetch(PDO::FETCH_ASSOC)['cnt'] > 0)
       {
+        $check_query = null;
         $sql = " UPDATE package SET enabled = 'N' WHERE Name = ? ";
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $disable_query = $this->db->prepare($sql);
         $disable_query->execute([$package_name]);
+        $disable_query = null;
         $result = json_encode(array('status' => 'ok', 'message' => 'Package was disabled'), JSON_PRETTY_PRINT);
       }
       else
       {
+        $check_query = null;
         $result = json_encode(array('status' => 'error', 'message' => 'You must provide a package correct name'), JSON_PRETTY_PRINT);
       }
     }
@@ -649,12 +682,17 @@ class OPM
       
       /*disable all package files*/
       $sql = " UPDATE package_file SET enabled = 'N' WHERE package_id = ? ";
+      $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+      $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $disablefile_query = $this->db->prepare($sql);
       $disablefile_query->execute([$package_id]);
+      $disablefile_query = null;
       
       /*get permmited files*/
       $permfiles_arr = array();
       $sql = " SELECT pf.file_name FROM permmited_file pf WHERE pf.package_id = ? ORDER BY lower(pf.file_name) ASC ";
+      $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+      $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $permfile_query = $this->db->prepare($sql);
       try
       {
@@ -665,6 +703,10 @@ class OPM
         }
       }
       catch (Exception $e) { }
+      finally
+      {
+        $permfile_query = null;
+      }
       
       if ($package_file_date == 0)
         $package_file_date = $this->datetimeToFloat(date('Y-m-d H:i:s'));
@@ -694,6 +736,8 @@ class OPM
             {
               /*get lpk info from db*/
               $sql = " SELECT pf.* from package_file pf WHERE pf.package_id = :packa AND Name = :name ";
+              $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+              $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
               $pkgfile_query = $this->db->prepare($sql);
               $pkgfile_query->bindParam(':package_name', $package_id, PDO::PARAM_INT);
               $pkgfile_query->bindParam(':name', $path_info['basename'], PDO::PARAM_STR);
@@ -717,6 +761,10 @@ class OPM
                 $pfdependecies = '';
                 $pftype = '';
               }
+              finally
+              {
+                $pkgfile_query = null;
+              }
               /*get lpk info from file*/
               $lpkinfo_arr = $this->getLpkInfoFormFile($file);
               /*... and inset/update into db with enabled only active files */
@@ -727,6 +775,8 @@ class OPM
               $sql .= " IFNULL((SELECT FPCCompatibility FROM package_file WHERE package_id = :package_id AND Name = :name), ''), ";
               $sql .= " IFNULL((SELECT SupportedWidgetSet FROM package_file WHERE package_id = :package_id AND Name = :name), ''), ";
               $sql .= " :type, :dependecies, 'Y' ";
+              $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+              $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
               $updatefile_query = $this->db->prepare($sql);
               $updatefile_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
               $updatefile_query->bindParam(':name', $path_info['basename'], PDO::PARAM_STR);
@@ -745,6 +795,7 @@ class OPM
               $param_dependecies = $this->getArrayStrVal('dependecies', $lpkinfo_arr, $pfdependecies, true);
               $updatefile_query->bindParam(':dependecies', $param_dependecies, PDO::PARAM_STR);
               $updatefile_query->execute();
+              $updatefile_query = null;
             }
             $zip->addFile($file, str_replace($unzipped_dir, '', $file));
           }
@@ -781,6 +832,8 @@ class OPM
         /*update json hash*/
         $sql = " UPDATE package SET RepositoryFileSize = :filesize, RepositoryFileHash = :filehash, ";
         $sql .= " RepositoryDate = :date, update_json_hash = :hash WHERE package_id = :package_id ";
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $updatepkg_query = $this->db->prepare($sql);
         $param_filesize = filesize($this->cfg_main_path . $package_file_name);
         $updatepkg_query->bindParam(':filesize', $param_filesize, PDO::PARAM_INT);
@@ -790,6 +843,7 @@ class OPM
         $updatepkg_query->bindParam(':hash', $update_json_hash, PDO::PARAM_STR);
         $updatepkg_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
         $updatepkg_query->execute();
+        $updatepkg_query = null;
         /*clean*/
         if (!$this->deleteDir($unzipped_dir))
           $this->addLog(true, "can't delete dir: " . $unzipped_dir);
@@ -809,6 +863,9 @@ class OPM
     $this->updated_pkgs = 0;
     $this->createTempDir();
     /*for all packages with json update url*/
+    $dbs = true;
+    $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+    $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $sql = " SELECT p.package_id, p.Name, p.DownloadURL, p.RepositoryFileName, p.update_json_hash FROM package p WHERE p.DownloadURL <> '' ";
     if (!$admin)
     {
@@ -822,7 +879,10 @@ class OPM
     try
     {
       $pkgdata_query = $this->db->query($sql);
-      while ($pkgdata_row = $pkgdata_query->fetch(PDO::FETCH_ASSOC))
+      $pkgdata_arr =  $pkgdata_query->fetchAll(PDO::FETCH_ASSOC);
+      $pkgdata_query = null;
+      $dbs = false;
+      foreach ($pkgdata_arr as $pkgdata_row)
       {
         $path_info = pathinfo($pkgdata_row['DownloadURL']);
         $ext = $this->getArrayStrVal('extension', $path_info);
@@ -885,6 +945,8 @@ class OPM
       $this->addLog(false, 'no packages defined or:' . $e->getMessage());
       $result = json_encode(array('status' => 'error', 'message' => 'no packages defined or:' . $e->getMessage()), JSON_PRETTY_PRINT);
     }
+    if ($dbs)
+      $pkgdata_query = null;
     
     return $result;
   }
@@ -915,9 +977,12 @@ class OPM
       {
         $package_id = 0;
         $sql = " SELECT COUNT(1) cnt, IFNULL(MAX(package_id), 0) pid FROM package WHERE Name = ? ";
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $check_query = $this->db->prepare($sql);
         $check_query->execute([$value['Name']]);
         $package_id = $check_query->fetch(PDO::FETCH_ASSOC)['pid'];
+        $check_query = null;
         if ($package_id > 0)
         {
           $sql = " UPDATE package SET Name = :name, DisplayName = :dname, Category = :category, ";
@@ -935,6 +1000,8 @@ class OPM
           $sql .= " :downurl, :svnurl, IFNULL((SELECT Rating FROM package WHERE Name = :name), :r), ";
           $sql .= " IFNULL((SELECT RatingCount FROM package WHERE Name = :name), :rc), :enabled, '' ";
         }
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $insertpkg_query = $this->db->prepare($sql);
         $insertpkg_query->bindParam(':name', $value['Name'], PDO::PARAM_STR);
         $param_dname = $this->getArrayStrVal('DisplayName', $value, $value['Name'], true);
@@ -1014,6 +1081,11 @@ class OPM
           $idpkg_query->bindParam(':name', $value['Name'], PDO::PARAM_STR);
           $idpkg_query->execute();
           $package_id = $idpkg_query->fetch(PDO::FETCH_ASSOC)['package_id'];
+          $insertpkg_query = null;
+        }
+        else
+        {
+          $insertpkg_query = null;
         }
       }
       elseif (($this->isBegins($key, 'PackageFiles')) && ($package_id > 0))
@@ -1027,6 +1099,8 @@ class OPM
           $sql .= " IFNULL((SELECT FPCCompatibility FROM package_file WHERE package_id = :package_id AND Name = :name), :fpccomp), ";
           $sql .= " IFNULL((SELECT SupportedWidgetSet FROM package_file WHERE package_id = :package_id AND Name = :name), :sws), ";
           $sql .= " :type, :dependecies, :enabled ";
+          $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+          $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
           $insertfile_query =$this->db->prepare($sql);
           $insertfile_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
           $insertfile_query->bindParam(':name', $fvalue['Name'], PDO::PARAM_STR);
@@ -1055,6 +1129,7 @@ class OPM
             $param_enabled = 'Y';
           $insertfile_query->bindParam(':enabled', $param_enabled, PDO::PARAM_STR);
           $insertfile_query->execute();
+          $insertfile_query = null;
         }
       }
       elseif (($this->isBegins($key, 'PermmitedFiles')) && ($package_id > 0))
@@ -1063,10 +1138,13 @@ class OPM
         {
           $sql = " INSERT INTO permmited_file (package_id, file_name) ";
           $sql .= " VALUES (:package_id, :name) ";
+          $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+          $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
           $insertpermfile_query =$this->db->prepare($sql);
           $insertpermfile_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
           $insertpermfile_query->bindParam(':name', $pvalue, PDO::PARAM_STR);
           $insertpermfile_query->execute();
+          $insertpermfile_query = null;
         }
       }
     }
@@ -1086,7 +1164,8 @@ class OPM
   {
     $pkglist_arr = array();
     $pkgdata_i = 0; //package no
-    
+    $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+    $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $sql = " SELECT p.* FROM package p ";
     if (!$admin)
     {
@@ -1157,6 +1236,10 @@ class OPM
     {
       $this->addLog(false, 'no packages defined');
     }
+    finally
+    {
+      $this->db = null;
+    }
     $json = '';
     if ($pkgdata_i > 0)
     {
@@ -1164,11 +1247,11 @@ class OPM
     }
     elseif (($admin) and ($package_name != ''))
     {
-      $json = json_encode(array('status' => 'error', 'message' => 'package: ' . $package_name . "don't exists"), JSON_PRETTY_PRINT)
+      $json = json_encode(array('status' => 'error', 'message' => 'package: ' . $package_name . "don't exists"), JSON_PRETTY_PRINT);
     }
     elseif ($admin)
     {
-      $json = json_encode(array('status' => 'error', 'message' => 'no defined packages'), JSON_PRETTY_PRINT)
+      $json = json_encode(array('status' => 'error', 'message' => 'no defined packages'), JSON_PRETTY_PRINT);
     }
     
     return $json;
@@ -1181,8 +1264,11 @@ class OPM
     $cnt = 0;
     $sql = " SELECT (SELECT COUNT(1) FROM package) + (SELECT COUNT(1) FROM package_file) + ";
     $sql .= " (SELECT COUNT(1) FROM permmited_file) + (SELECT COUNT(1) FROM rating_history) cnt ";
+    $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+    $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $check_query = $this->db->query($sql);
     $cnt = $check_query->fetch(PDO::FETCH_ASSOC)['cnt'];
+    $check_query = null;
     if ($cnt == 0)
     {
       try
