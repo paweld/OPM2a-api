@@ -1,0 +1,250 @@
+object Form1: TForm1
+  Left = 386
+  Height = 536
+  Top = 189
+  Width = 857
+  Caption = 'Form1'
+  ClientHeight = 536
+  ClientWidth = 857
+  LCLVersion = '2.1.0.0'
+  object rgcmd: TRadioGroup
+    Left = 8
+    Height = 144
+    Top = 8
+    Width = 512
+    AutoFill = True
+    Caption = 'Commands:'
+    ChildSizing.LeftRightSpacing = 6
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsScaleChilds
+    ChildSizing.ShrinkVertical = crsScaleChilds
+    ChildSizing.Layout = cclLeftToRightThenTopToBottom
+    ChildSizing.ControlsPerLine = 2
+    ClientHeight = 124
+    ClientWidth = 508
+    Columns = 2
+    Items.Strings = (
+      'ADMIN: initialize DB'
+      'ADMIN: get package list'
+      'ADMIN: get rating history'
+      'ADMIN: add/update package'
+      'ADMIN: force update packages info from update.json'
+      'ADMIN: disable package'
+      'ALL: set rate'
+      'ALL: get rating list'
+    )
+    OnClick = rgcmdClick
+    TabOrder = 0
+  end
+  object min: TMemo
+    Left = 8
+    Height = 306
+    Top = 208
+    Width = 406
+    Lines.Strings = (
+      '{"PackageData0" : {'
+      '    "Name" : "New Package",'
+      '    "DisplayName" : "New Test Package",'
+      '    "Category" : "LazIDEPlugins",'
+      '    "CommunityDescription" : "New test package.",'
+      '    "ExternalDependecies" : "",'
+      '    "OrphanedPackage" : 0,'
+      '    "RepositoryFileName" : "NewTestPackage.zip",'
+      '    "RepositoryFileSize" : 0,'
+      '    "RepositoryFileHash" : "",'
+      '    "RepositoryDate" : 4.3220304068090278E+004,'
+      '    "PackageBaseDir" : "ntpdir\\/",'
+      '    "HomePageURL" : "",'
+      '    "DownloadURL" : "",'
+      '    "SVNURL" : "",'
+      '    "package_zip_base64" : "UEsDBBQAAAAAAPOECFEAAAAAAAAAAAAAAAAHAAAAbnRwZGlyL1BLAwQUAAAACAArhQhRVFp8khUCAADJBQAAEgAAAG50cGRpci9udHBtYWluLmxwa4VUzW7aQBC+V+o7rKwckkNCCE2Vg2nUgoiQCEYFcsplsaf2Cnvt7q6TtMe+W98ru/YO6x9QDkjM3/fNfJ5Z//4tS8kLCMlyPvaGV9ceAR7mEePx2NtuZpd33v23z5/8SbCczR/0P0L8FQ33NAbyhGW3XhWoQiqZQsoy8kTTEsbeszfA2JJmgO4lvJINSEUslsv6XqokF5i3oq/w/x+ZZkyJcu+yJnlWsBREUCjdgazcVcD2hPXDoa052Z2LroGKMDE5NZ51bzlTQamKUk2ZgFDl4g+Wp2z3fHa+oSIGNVltLy7RCNYXTeRBF9rOEMEDcBDUzNCkXGdUqAXje8ONZBtRVjK5NDN8xv5SJ8HR0AJeIEWUURti0MdwPaRaYNNkrwMsPjGBb1rXC9SEm8KujGN0Hty2GqrwnP/KkWtGU4lk7lNI0NBg8qwyLrczV5MPfa4tVEklIKzZWqtHkFJvZUfUecxzAREGCYvevl7f3llhjDka3nxpm6NjH25whAdD2FNt9ffcqilDwSofilDYo4xcCEndVTwyPYG+CheZafQG/VxBZq1DmDfulqsio4xfFVQihruSZT+xtS4WvDaaxP5P+F0yLe1qH59qxr07TZrFZPGDSjhN00GuezWaO0UbE5gLReizc10TVFevj/kA2CmuGyt3KZPJR4/RTQXjdllLYH5KZ7VOzJH1gI3TymBe5cHhWX4HUEsDBBQAAAAIAHOFCFEWzf0fnwAAAOIAAAASAAAAbnRwZGlyL250cG1haW4ucGFzhY07DsIwDIb3Sr2DB6SCaDlAERMIMfM4QNq4lVHiVI0zVFXvTpIL4MGP35/9ByYBlskq4nNZlMW6s04juO47TP227h7HLcnEgvOgekxD8OjLAuBqlI9tDa/Ff4RMfjAE7oUcw4hyU4IteJmJx7wkOxm0yKIS8gfvcCROPk/0wQi0F7i72arMvcnivlpiNNY2Wlc1JPkQ75B1zLmeyuIHUEsBAj8AFAAAAAAA84QIUQAAAAAAAAAAAAAAAAcAJAAAAAAAAAAQIAAAAAAAAG50cGRpci8KACAAAAAAAAEAGAAUNc+9kW3WARQ1z72RbdYBDbRFs5Ft1gFQSwECPwAUAAAACAArhQhRVFp8khUCAADJBQAAEgAkAAAAAAAAACAgAAAlAAAAbnRwZGlyL250cG1haW4ubHBrCgAgAAAAAAABABgAI1Eq+5Ft1gEjUSr7kW3WAXvZdK2RbdYBUEsBAj8AFAAAAAgAc4UIURbN/R+fAAAA4gAAABIAJAAAAAAAAAAgIAAAagIAAG50cGRpci9udHBtYWluLnBhcwoAIAAAAAAAAQAYAAnrcUySbdYBCetxTJJt1gEtGHatkW3WAVBLBQYAAAAAAwADACEBAAA5AwAAAAA="'
+      '  },'
+      '  "PackageFiles0" : ['
+      '    {'
+      '      "Name" : "bad.lpk",'
+      '      "Description" : "test ",'
+      '      "Author" : "nobody ",'
+      '      "License" : "BSD",'
+      '      "RelativeFilePath" : "",'
+      '      "VersionAsString" : "77.0.0.1",'
+      '      "LazCompatibility" : "Trunk",'
+      '      "FPCCompatibility" : "Trunk",'
+      '      "SupportedWidgetSet" : "win32/win64, gtk2, carbon",'
+      '      "PackageType" : 0,'
+      '      "DependenciesAsString" : "IDEIntf, FCL"'
+      '    }'
+      '  ],'
+      '  "PermmitedFiles0" : ['
+      '  '
+      '    "ntpdir/packages/lazarus/build.cmd",'
+      ' '
+      '    "/ntpdir/examples/project1.exe"'
+      ' '
+      '   ],'
+      '  "PackageData12" : {'
+      '    "Name" : "AutoSave",'
+      '    "DisplayName" : "AutoSave - NAME UPDATED for tests",'
+      '    "Category" : "LazIDEPlugins",'
+      '    "CommunityDescription" : "IDE extention. Auto-saves currently opened project.",'
+      '    "ExternalDependecies" : "",'
+      '    "OrphanedPackage" : 0,'
+      '    "RepositoryFileName" : "AutoSave.zip",'
+      '    "RepositoryFileSize" : 5766,'
+      '    "RepositoryFileHash" : "a4304fe9a637252da2f6a579f53c92c3",'
+      '    "RepositoryDate" : 4.3220304068090278E+004,'
+      '    "PackageBaseDir" : "AutoSave\\/",'
+      '    "HomePageURL" : "https://github.com/lainz/LazAutoSave",'
+      '    "DownloadURL" : "",'
+      '    "SVNURL" : "",'
+      '    "enabled" : "N"'
+      '  },'
+      '  "PackageFiles12" : ['
+      '    {'
+      '      "Name" : "autosave.lpk",'
+      '      "Description" : "Autosave currently opened project. ",'
+      '      "Author" : "GetMem, JuhaManninen and Lainz\n ",'
+      '      "License" : "GPL",'
+      '      "RelativeFilePath" : "",'
+      '      "VersionAsString" : "0.1.0.0",'
+      '      "LazCompatibility" : "1.8.0, 1.8.2, 1.8.4, 1.8.5, 2.0.0, 2.0.2, 2.0.4, 2.0.6, Trunk",'
+      '      "FPCCompatibility" : "3.0.0, 3.0.2, 3.0.4",'
+      '      "SupportedWidgetSet" : "win32/win64, gtk2, carbon",'
+      '      "PackageType" : 0,'
+      '      "DependenciesAsString" : "IDEIntf, FCL"'
+      '    }'
+      '  ]}'
+    )
+    ScrollBars = ssAutoVertical
+    TabOrder = 1
+  end
+  object Label1: TLabel
+    Left = 8
+    Height = 15
+    Top = 192
+    Width = 108
+    Caption = 'Input (package json)'
+    ParentColor = False
+  end
+  object Label2: TLabel
+    Left = 440
+    Height = 15
+    Top = 192
+    Width = 108
+    Caption = 'Input (package json)'
+    ParentColor = False
+  end
+  object mout: TMemo
+    Left = 440
+    Height = 306
+    Top = 208
+    Width = 406
+    Color = 15269887
+    ReadOnly = True
+    ScrollBars = ssAutoVertical
+    TabOrder = 2
+  end
+  object epackage: TEdit
+    Left = 640
+    Height = 23
+    Top = 8
+    Width = 206
+    TabOrder = 3
+  end
+  object Label3: TLabel
+    Left = 536
+    Height = 15
+    Top = 16
+    Width = 80
+    Caption = 'Package name:'
+    ParentColor = False
+  end
+  object Label4: TLabel
+    Left = 536
+    Height = 15
+    Top = 48
+    Width = 26
+    Caption = 'Rate:'
+    ParentColor = False
+  end
+  object erate: TEdit
+    Left = 640
+    Height = 23
+    Top = 40
+    Width = 112
+    TabOrder = 4
+    TextHint = 'between 0 and 5'
+  end
+  object Button1: TButton
+    Left = 536
+    Height = 48
+    Top = 137
+    Width = 310
+    Caption = 'Execute'
+    OnClick = Button1Click
+    TabOrder = 5
+  end
+  object Label5: TLabel
+    Left = 536
+    Height = 15
+    Top = 80
+    Width = 75
+    Caption = 'ADMIN Login:'
+    ParentColor = False
+  end
+  object elogin: TEdit
+    Left = 640
+    Height = 23
+    Top = 72
+    Width = 137
+    TabOrder = 6
+    Text = 'opm-admin'
+  end
+  object epassword: TEdit
+    Left = 640
+    Height = 23
+    Top = 104
+    Width = 136
+    EchoMode = emPassword
+    PasswordChar = '#'
+    TabOrder = 7
+    Text = '*6>S}bG4U!TL^s=2'
+  end
+  object Label6: TLabel
+    Left = 536
+    Height = 15
+    Top = 112
+    Width = 95
+    Caption = 'ADMIN Password:'
+    ParentColor = False
+  end
+  object linfo: TLabel
+    Left = 0
+    Height = 15
+    Top = 521
+    Width = 857
+    Align = alBottom
+    Alignment = taCenter
+    Caption = ' '
+    Color = clYellow
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+    Transparent = False
+  end
+  object Label7: TLabel
+    Left = 8
+    Height = 15
+    Top = 167
+    Width = 127
+    Caption = 'package repository URL:'
+    ParentColor = False
+  end
+  object eurl: TEdit
+    Left = 144
+    Height = 23
+    Top = 159
+    Width = 376
+    TabOrder = 8
+  end
+end
