@@ -46,11 +46,21 @@ if (!isset($_SERVER['PHP_AUTH_USER']))
   {
     case 'GET':
       if ($cmd == 'rating')
-        $json_response = $opm->getRating($pkg_name); 
+      {
+        $json_response = $opm->getRating($pkg_name);
+      }
+      elseif ($cmd == 'getcomments') 
+      {
+        $json_response = $opm->getComments($pkg_name);
+      }      
       break;
-    case 'PUT':
+    case 'POST':
       if (($cmd == 'setrate') && (isset($_GET['rate'])))
-        $json_response = $opm->setRating($pkg_name, $_GET['rate']); 
+      {
+        $uuid = (isset($_GET['uuid'])) ? $_GET['uuid'] : '';
+        $json = file_get_contents('php://input');
+        $json_response = $opm->setRating($pkg_name, $uuid, $_GET['rate'], $json);
+      } 
       break;
   }
   $opm = null;

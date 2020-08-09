@@ -48,6 +48,7 @@ class OPM
   private $cfg_admins = array("opm-admin" => "*6>S}bG4U!TL^s=2");
   /*init repository*/
   private $initrepo = 'https://packages.lazarus-ide.org/';
+  //private $initrepo = 'http://localhost/opm_org/';
   
   private $db;
   private $initmode; //if initialize then rating import and download packages zip
@@ -150,12 +151,21 @@ class OPM
         $sql .= "   PRIMARY KEY(package_id, file_name) ";
         $sql .= " ); ";
         $this->db->exec($sql);
+        $sql = " CREATE TABLE IF NOT EXISTS users ( ";
+        $sql .= "   user_id INTEGER PRIMARY KEY, ";
+        $sql .= "   uuid VARCHAR(64) NOT NULL UNIQUE, ";
+        $sql .= "   Name VARCHAR(100) NOT NULL ";
+        $sql .= " ); ";
+        $this->db->exec($sql);
         $sql = " CREATE TABLE IF NOT EXISTS rating_history ( ";
         $sql .= "  rating_id INTEGER PRIMARY KEY, ";
         $sql .= "  package_id INTEGER NOT NULL, ";
+        $sql .= "  user_id INTEGER NOT NULL, ";
         $sql .= "  ip_hash VARCHAR(32) NOT NULL, ";
         $sql .= "  vote_time REAL NOT NULL,";
-        $sql .= "  rate TINYINT NOT NULL ";
+        $sql .= "  Rate TINYINT NOT NULL, ";
+        $sql .= "  [Comment] TINYINT NOT NULL, ";
+        $sql .= "  UNIQUE(package_id, user_id) ";
         $sql .= "); ";
         $this->db->exec($sql);
         $sql = " CREATE INDEX IF NOT EXISTS idx_rating_history ON rating_history (package_id ASC); ";
@@ -238,7 +248,7 @@ class OPM
     if ($this->tmp_dir == '')
     {
       $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      $charactersLength = strlen($characters);
+      $characters_len = strlen($characters);
       if ($this->createPath($this->cfg_tmp_path))
       {
         $dir = $this->cfg_tmp_path;
@@ -249,7 +259,7 @@ class OPM
       }
       for ($i = 0; $i < 16; $i++) 
       {
-          $dir .= $characters[rand(0, $charactersLength - 1)];
+          $dir .= $characters[rand(0, $characters_len - 1)];
       }
       if (!$this->createPath($dir))
         $dir = '/tmp';
@@ -467,10 +477,117 @@ class OPM
   }
   
   /*set rating*/
-  public function setRating($package_name, $rate)
+  public function setRating($package_name, $uuid, $rate, $json)
   {
     $result = '';
+    $package_id = 0;
+    $user_id = 0;
+    $uuid_tmp = $uuid;
     if (($package_name == '') || (!is_numeric($rate)) || ($rate < 0) || ($rate > 5))
+    {
+      $result = json_encode(array('status' => 'error', 'message' => 'Incorrect data'), JSON_PRETTY_PRINT);
+    }
+    else 
+    {
+      if ($uuid_tmp != '')
+      {
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $sql = " SELECT COUNT(1) cnt, IFNULL(MAX(user_id), 0) uid FROM users WHERE uuid = ? ";
+        $checkuser_query = $this->db->prepare($sql);
+        $checkuser_query->execute([$uuid_tmp]);
+        $user_id = $checkuser_query->fetch(PDO::FETCH_ASSOC)['uid'];
+        $checkuser_query = null;
+        if ($user_id == 0)
+          $result = json_encode(array('status' => 'error', 'message' => 'Invalid user identificator'), JSON_PRETTY_PRINT);
+      }
+      if ($result == '')
+      {
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $sql = " SELECT COUNT(1) cnt, IFNULL(MAX(package_id), 0) pid FROM package WHERE Name = ? ";
+        $check_query = $this->db->prepare($sql);
+        $check_query->execute([$package_name]);
+        $package_id = $check_query->fetch(PDO::FETCH_ASSOC)['pid'];
+        $check_query = null;
+        $comment_arr = array();
+        if ($json != '')
+          $comment_arr = json_decode($json, true);
+        if ($package_id > 0)
+        {
+          $ip = md5($this->getClientIP());
+          $user_name = $this->getArrayStrVal('Author', $comment_arr, '[Anonymous]', true);
+          $comment = $this->getArrayStrVal('Comment', $comment_arr); 
+          if ($user_id == 0)
+          {
+            $sql = " INSERT INTO users (uuid, Name) ";
+            $sql .= " VALUES (:uuid, :name) ";
+            $uuid_tmp = date('Y-m-d H:i:s') . $ip;
+            for ($i = 0; $i < 16; $i++)
+            {
+              $uuid_tmp .= chr(rand(32, 126));
+            }
+            $uuid_tmp = hash('sha256', $uuid_tmp);
+            $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+            $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $adduser_query = $this->db->prepare($sql);
+            $adduser_query->bindParam(':uuid', $uuid_tmp, PDO::PARAM_STR);
+            $adduser_query->bindParam(':name', $user_name, PDO::PARAM_STR);
+            $adduser_query->execute();
+            $sql = " SELECT user_id FROM users WHERE uuid = ? ";
+            $getuser_query = $this->db->prepare($sql);
+            $getuser_query->execute([$uuid_tmp]);
+            $user_id = $getuser_query->fetch(PDO::FETCH_ASSOC)['user_id'];
+            $getuser_query = null;
+          }
+          else
+          {
+            $sql = " UPDATE users SET Name = :name WHERE user_id = :user_id ";
+            $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+            $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $updateuser_query = $this->db->prepare($sql);
+            $updateuser_query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+            $updateuser_query->bindParam(':name', $user_name, PDO::PARAM_STR);
+            $updateuser_query->execute();
+            $updateuser_query = null;
+          }
+          $sql = " INSERT OR REPLACE INTO rating_history (package_id, user_id, ip_hash, vote_time, rate, [comment]) ";
+          $sql .= " VALUES (:package_id, :user_id, :ip, :date, :rate, :comm) ";
+          $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+          $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+          $rating_query = $this->db->prepare($sql);
+          $rating_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
+          $rating_query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+          $rating_query->bindParam(':ip', $ip, PDO::PARAM_STR);
+          $param_date = $this->datetimeToFloat(date('Y-m-d H:i:s'));
+          $rating_query->bindParam(':date', $param_date, PDO::PARAM_STR);
+          $rating_query->bindParam(':rate', $rate, PDO::PARAM_INT);
+          $rating_query->bindParam(':comm', $comment, PDO::PARAM_STR);
+          $rating_query->execute();
+          $sql = " SELECT Rating, RatingCount FROM package WHERE package_id = ? ";
+          $checkrating_query = $this->db->prepare($sql);
+          $checkrating_query->execute([$package_id]);
+          $rating_arr = $checkrating_query->fetchAll(PDO::FETCH_ASSOC);
+          $checkrating_query = null;
+          $rating_arr = array('Your-UUID' => $uuid_tmp) + $rating_arr;
+          $result = json_encode($rating_arr, JSON_PRETTY_PRINT);
+        }
+        else
+        {
+          $result = json_encode(array('status' => 'error', 'message' => 'Incorrect data'), JSON_PRETTY_PRINT);
+        }
+      }
+    }
+    
+    return $result;
+  }
+  
+  /*det comments*/
+  public function getComments($package_name)
+  {
+    $result = '';
+    $package_id = 0;
+    if ($package_name == '')
     {
       $result = json_encode(array('status' => 'error', 'message' => 'Incorrect data'), JSON_PRETTY_PRINT);
     }
@@ -485,24 +602,15 @@ class OPM
       $check_query = null;
       if ($package_id > 0)
       {
-        $sql = " INSERT INTO rating_history (package_id, ip_hash, vote_time, rate) ";
-        $sql .= " SELECT :package_id, :ip, :date, :rate ";
+        $sql = " SELECT rh.vote_time [Time], u.Name Author, rh.[Comment] FROM rating_history rh INNER JOIN users u ON (rh.user_id = u.user_id) ";
+        $sql .= " WHERE rh.package_id = ?  AND rh.[comment] <> '' ORDER BY rh.vote_time ASC ";
         $this->db = new PDO('sqlite:' . $this->cfg_db_file);
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $rating_query = $this->db->prepare($sql);
-        $rating_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
-        $ip = md5($this->getClientIP());
-        $rating_query->bindParam(':ip', $ip, PDO::PARAM_STR);
-        $param_date = $this->datetimeToFloat(date('Y-m-d H:i:s'));
-        $rating_query->bindParam(':date', $param_date, PDO::PARAM_STR);
-        $rating_query->bindParam(':rate', $rate, PDO::PARAM_INT);
-        $rating_query->execute();
-        $sql = " SELECT Rating, RatingCount FROM package WHERE package_id = ? ";
-        $checkrating_query = $this->db->prepare($sql);
-        $checkrating_query->execute([$package_id]);
-        $rating_arr = $checkrating_query->fetchAll(PDO::FETCH_ASSOC);
-        $checkrating_query = null;
-        $result = json_encode($rating_arr, JSON_PRETTY_PRINT);
+        $comments_query = $this->db->prepare($sql);
+        $comments_query->execute([$package_id]);
+        $comments_arr = $comments_query->fetchAll(PDO::FETCH_ASSOC);
+        $comments_query = null;
+        $result = json_encode(array($package_name => $comments_arr), JSON_PRETTY_PRINT);
       }
       else
       {
@@ -605,7 +713,8 @@ class OPM
       $dbs = false;
       foreach ($pkg_arr as $pkg_row)
       {
-        $sql = " SELECT rh.ip_hash IPHash, rh.vote_time Time, rh.rate Rate from rating_history rh WHERE rh.package_id = ? ";
+        $sql = " SELECT rh.ip_hash IPHash, rh.vote_time Time, rh.rate Rate, u.Name Author, rh.[Comment] ";
+        $sql .= " FROM rating_history rh INNER JOIN users u ON (rh.user_id = u.user_id) WHERE rh.package_id = ? ";
         $sql .= " ORDER BY rh.vote_time ASC, rh.ip_hash ASC, rh.rate ASC ";
         $dbs = true;
         $this->db = new PDO('sqlite:' . $this->cfg_db_file);
@@ -702,7 +811,6 @@ class OPM
           $permfiles_arr[] = ($this->isBegins($permfile_row['file_name'], '/')) ? substr($permfile_row['file_name'], 1, strlen($permfile_row['file_name']) - 1) : $permfile_row['file_name'];
         }
       }
-      catch (Exception $e) { }
       finally
       {
         $permfile_query = null;
@@ -775,24 +883,24 @@ class OPM
               $sql .= " IFNULL((SELECT FPCCompatibility FROM package_file WHERE package_id = :package_id AND Name = :name), ''), ";
               $sql .= " IFNULL((SELECT SupportedWidgetSet FROM package_file WHERE package_id = :package_id AND Name = :name), ''), ";
               $sql .= " :type, :dependecies, 'Y' ";
+              $param_desc = $this->getArrayStrVal('desc', $lpkinfo_arr, $pfdesc, true);
+              $param_author = $this->getArrayStrVal('author', $lpkinfo_arr, $pfauthor, true);
+              $param_license = $this->getArrayStrVal('license', $lpkinfo_arr, $pflicense, true);
+              $param_relpath = (($path_info['dirname'] == '.') || ($path_info['dirname'] == '..')) ? '' : $path_info['dirname'] . '/';
+              $param_version = $this->getArrayStrVal('version', $lpkinfo_arr, $pfversion, true);
+              $param_type = $this->getArrayStrVal('type', $lpkinfo_arr, $pftype, true);
+              $param_dependecies = $this->getArrayStrVal('dependecies', $lpkinfo_arr, $pfdependecies, true);
               $this->db = new PDO('sqlite:' . $this->cfg_db_file);
               $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
               $updatefile_query = $this->db->prepare($sql);
               $updatefile_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
               $updatefile_query->bindParam(':name', $path_info['basename'], PDO::PARAM_STR);
-              $param_desc = $this->getArrayStrVal('desc', $lpkinfo_arr, $pfdesc, true);
               $updatefile_query->bindParam(':desc', $param_desc, PDO::PARAM_STR);
-              $param_author = $this->getArrayStrVal('author', $lpkinfo_arr, $pfauthor, true);
               $updatefile_query->bindParam(':author', $param_author, PDO::PARAM_STR);
-              $param_license = $this->getArrayStrVal('license', $lpkinfo_arr, $pflicense, true);
               $updatefile_query->bindParam(':license', $param_license, PDO::PARAM_STR);
-              $param_relpath = (($path_info['dirname'] == '.') || ($path_info['dirname'] == '..')) ? '' : $path_info['dirname'] . '/';
               $updatefile_query->bindParam(':relpath', $param_relpath, PDO::PARAM_STR);
-              $param_version = $this->getArrayStrVal('version', $lpkinfo_arr, $pfversion, true);
               $updatefile_query->bindParam(':version', $param_version, PDO::PARAM_STR);
-              $param_type = $this->getArrayStrVal('type', $lpkinfo_arr, $pftype, true);
               $updatefile_query->bindParam(':type', $param_type, PDO::PARAM_INT);
-              $param_dependecies = $this->getArrayStrVal('dependecies', $lpkinfo_arr, $pfdependecies, true);
               $updatefile_query->bindParam(':dependecies', $param_dependecies, PDO::PARAM_STR);
               $updatefile_query->execute();
               $updatefile_query = null;
@@ -832,12 +940,12 @@ class OPM
         /*update json hash*/
         $sql = " UPDATE package SET RepositoryFileSize = :filesize, RepositoryFileHash = :filehash, ";
         $sql .= " RepositoryDate = :date, update_json_hash = :hash WHERE package_id = :package_id ";
+        $param_filesize = filesize($this->cfg_main_path . $package_file_name);
+        $param_filehash = md5_file($this->cfg_main_path . $package_file_name);
         $this->db = new PDO('sqlite:' . $this->cfg_db_file);
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $updatepkg_query = $this->db->prepare($sql);
-        $param_filesize = filesize($this->cfg_main_path . $package_file_name);
         $updatepkg_query->bindParam(':filesize', $param_filesize, PDO::PARAM_INT);
-        $param_filehash = md5_file($this->cfg_main_path . $package_file_name);
         $updatepkg_query->bindParam(':filehash', $param_filehash, PDO::PARAM_STR);
         $updatepkg_query->bindParam(':date', $package_file_date, PDO::PARAM_STR);
         $updatepkg_query->bindParam(':hash', $update_json_hash, PDO::PARAM_STR);
@@ -1000,43 +1108,20 @@ class OPM
           $sql .= " :downurl, :svnurl, IFNULL((SELECT Rating FROM package WHERE Name = :name), :r), ";
           $sql .= " IFNULL((SELECT RatingCount FROM package WHERE Name = :name), :rc), :enabled, '' ";
         }
-        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
-        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $insertpkg_query = $this->db->prepare($sql);
-        $insertpkg_query->bindParam(':name', $value['Name'], PDO::PARAM_STR);
         $param_dname = $this->getArrayStrVal('DisplayName', $value, $value['Name'], true);
-        $insertpkg_query->bindParam(':dname', $param_dname, PDO::PARAM_STR);
-        $insertpkg_query->bindParam(':category', $value['Category'], PDO::PARAM_STR);
         $param_desc = $this->getArrayStrVal('CommunityDescription', $value);
-        $insertpkg_query->bindParam(':desc', $param_desc, PDO::PARAM_STR);
         $param_dependecies = $this->getArrayStrVal('ExternalDependecies', $value);
-        $insertpkg_query->bindParam(':dependecies', $param_dependecies, PDO::PARAM_STR);
         $param_orphpkg = $this->getArrayStrVal('OrphanedPackage', $value, '0', true);
-        $insertpkg_query->bindParam(':orphpkg', $param_orphpkg, PDO::PARAM_INT);
-        $insertpkg_query->bindParam(':pkgdir', $value['PackageBaseDir'], PDO::PARAM_STR);
         $param_homeurl = $this->getArrayStrVal('HomePageURL', $value);
-        $insertpkg_query->bindParam(':homeurl', $param_homeurl, PDO::PARAM_STR);
         $param_downurl = $this->getArrayStrVal('DownloadURL', $value);
-        $insertpkg_query->bindParam(':downurl', $param_downurl, PDO::PARAM_STR);
         $param_svnurl = $this->getArrayStrVal('SVNURL', $value);
-        $insertpkg_query->bindParam(':svnurl', $param_svnurl, PDO::PARAM_STR);
-        if ($package_id == 0)
-        {
-          $param_r = ((($this->initmode) && (array_key_exists('Rating', $value))) ? $value['Rating'] : 0);
-          $param_rc = ((($this->initmode) && (array_key_exists('RatingCount', $value))) ? $value['RatingCount'] : 0);
-          $insertpkg_query->bindParam(':r', $param_r, PDO::PARAM_STR);
-          $insertpkg_query->bindParam(':rc', $param_rc, PDO::PARAM_INT);
-        }
-        else
-        {
-          $insertpkg_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
-        }
         $tmpfn = $value['Name'] . '.zip';
         $file_name = $this->getArrayStrVal('RepositoryFileName', $value, $tmpfn, true);
-        $insertpkg_query->bindParam(':filename', $file_name, PDO::PARAM_STR);
-        $insertpkg_query->bindParam(':filesize', $value['RepositoryFileSize'], PDO::PARAM_INT);
-        $insertpkg_query->bindParam(':filehash', $value['RepositoryFileHash'], PDO::PARAM_STR);
-        $insertpkg_query->bindParam(':date', $value['RepositoryDate'], PDO::PARAM_STR);
+        $param_r = ((($this->initmode) && (array_key_exists('Rating', $value))) ? $value['Rating'] : 0);
+        $param_rc = ((($this->initmode) && (array_key_exists('RatingCount', $value))) ? $value['RatingCount'] : 0);
+        $param_filesize = $value['RepositoryFileSize'];
+        $param_filehash = $value['RepositoryFileHash'];
+        $param_filedate = $value['RepositoryDate'];
         if ($this->initmode)
         {
           try
@@ -1054,11 +1139,8 @@ class OPM
           if (file_put_contents($this->cfg_main_path . $file_name, $file_body))
           {
             $param_filesize = strlen($file_body);
-            $insertpkg_query->bindParam(':filesize', $param_filesize, PDO::PARAM_INT);
             $param_filehash = md5($file_body);
-            $insertpkg_query->bindParam(':filehash', $param_filehash, PDO::PARAM_STR);
             $param_filedate = $this->datetimeToFloat(date('Y-m-d H:i:s'));
-            $insertpkg_query->bindParam(':date', $param_filedate, PDO::PARAM_STR);
           }
         }
         else
@@ -1070,22 +1152,45 @@ class OPM
         $param_enabled = $this->getArrayStrVal('enabled', $value, 'Y');
         if ($this->initmode)
           $_param_enabled = 'Y';
-        if (!file_exists($this->cfg_main_path . $file_name))
-          $param_enabled = 'N';
+        $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $insertpkg_query = $this->db->prepare($sql);
+        $insertpkg_query->bindParam(':name', $value['Name'], PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':dname', $param_dname, PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':category', $value['Category'], PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':desc', $param_desc, PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':dependecies', $param_dependecies, PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':orphpkg', $param_orphpkg, PDO::PARAM_INT);
+        $insertpkg_query->bindParam(':pkgdir', $value['PackageBaseDir'], PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':homeurl', $param_homeurl, PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':downurl', $param_downurl, PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':svnurl', $param_svnurl, PDO::PARAM_STR);
+        if ($package_id == 0)
+        {
+          $insertpkg_query->bindParam(':r', $param_r, PDO::PARAM_STR);
+          $insertpkg_query->bindParam(':rc', $param_rc, PDO::PARAM_INT);
+        }
+        else
+        {
+          $insertpkg_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
+        }
+        $insertpkg_query->bindParam(':filename', $file_name, PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':filesize', $param_filesize, PDO::PARAM_INT);
+        $insertpkg_query->bindParam(':filehash', $param_filehash, PDO::PARAM_STR);
+        $insertpkg_query->bindParam(':date', $param_filedate, PDO::PARAM_STR);
         $insertpkg_query->bindParam(':enabled', $param_enabled, PDO::PARAM_STR);
         $insertpkg_query->execute();
+        $insertpkg_query = null;
         if ($package_id == 0)
         {
           $sql = " SELECT package_id FROM package WHERE Name = :name ";
+          $this->db = new PDO('sqlite:' . $this->cfg_db_file);
+          $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
           $idpkg_query =$this->db->prepare($sql);
           $idpkg_query->bindParam(':name', $value['Name'], PDO::PARAM_STR);
           $idpkg_query->execute();
           $package_id = $idpkg_query->fetch(PDO::FETCH_ASSOC)['package_id'];
-          $insertpkg_query = null;
-        }
-        else
-        {
-          $insertpkg_query = null;
+          $idpkg_query = null;
         }
       }
       elseif (($this->isBegins($key, 'PackageFiles')) && ($package_id > 0))
@@ -1099,34 +1204,34 @@ class OPM
           $sql .= " IFNULL((SELECT FPCCompatibility FROM package_file WHERE package_id = :package_id AND Name = :name), :fpccomp), ";
           $sql .= " IFNULL((SELECT SupportedWidgetSet FROM package_file WHERE package_id = :package_id AND Name = :name), :sws), ";
           $sql .= " :type, :dependecies, :enabled ";
+          $param_desc = $this->getArrayStrVal('Description', $fvalue);
+          $param_author = $this->getArrayStrVal('Author', $fvalue);
+          $param_license = $this->getArrayStrVal('License', $fvalue);
+          $param_relpath = ($fvalue['RelativeFilePath'] == '') ? '' : $fvalue['RelativeFilePath'] . '/';
+          $param_version = $this->getArrayStrVal('VersionAsString', $fvalue);
+          $param_lazcomp = $this->getArrayStrVal('LazCompatibility', $fvalue);
+          $param_fpccomp = $this->getArrayStrVal('FPCCompatibility', $fvalue);
+          $param_sws = $this->getArrayStrVal('SupportedWidgetSet', $fvalue);
+          $param_type = $this->getArrayStrVal('PackageType', $fvalue, '2');
+          $param_dependecies = $this->getArrayStrVal('DependenciesAsString', $fvalue);
+          $param_enabled = $this->getArrayStrVal('enabled', $fvalue, 'Y');
+          if ($this->initmode)
+            $param_enabled = 'Y';
           $this->db = new PDO('sqlite:' . $this->cfg_db_file);
           $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
           $insertfile_query =$this->db->prepare($sql);
           $insertfile_query->bindParam(':package_id', $package_id, PDO::PARAM_INT);
           $insertfile_query->bindParam(':name', $fvalue['Name'], PDO::PARAM_STR);
-          $param_desc = $this->getArrayStrVal('Description', $fvalue);
           $insertfile_query->bindParam(':desc', $param_desc, PDO::PARAM_STR);
-          $param_author = $this->getArrayStrVal('Author', $fvalue);
           $insertfile_query->bindParam(':author', $param_author, PDO::PARAM_STR);
-          $param_license = $this->getArrayStrVal('License', $fvalue);
           $insertfile_query->bindParam(':license', $param_license, PDO::PARAM_STR);
-          $param_relpath = ($fvalue['RelativeFilePath'] == '') ? '' : $fvalue['RelativeFilePath'] . '/';
           $insertfile_query->bindParam(':relpath', $param_relpath, PDO::PARAM_STR);
-          $param_version = $this->getArrayStrVal('VersionAsString', $fvalue);
           $insertfile_query->bindParam(':version', $param_version, PDO::PARAM_STR);
-          $param_lazcomp = $this->getArrayStrVal('LazCompatibility', $fvalue);
           $insertfile_query->bindParam(':lazcomp', $param_lazcomp, PDO::PARAM_STR);
-          $param_fpccomp = $this->getArrayStrVal('FPCCompatibility', $fvalue);
           $insertfile_query->bindParam(':fpccomp', $param_fpccomp, PDO::PARAM_STR);
-          $param_sws = $this->getArrayStrVal('SupportedWidgetSet', $fvalue);
           $insertfile_query->bindParam(':sws', $param_sws, PDO::PARAM_STR);
-          $param_type = $this->getArrayStrVal('PackageType', $fvalue, '2');
           $insertfile_query->bindParam(':type', $param_type, PDO::PARAM_INT);
-          $param_dependecies = $this->getArrayStrVal('DependenciesAsString', $fvalue);
           $insertfile_query->bindParam(':dependecies', $param_dependecies, PDO::PARAM_STR);
-          $param_enabled = $this->getArrayStrVal('enabled', $fvalue, 'Y');
-          if ($this->initmode)
-            $param_enabled = 'Y';
           $insertfile_query->bindParam(':enabled', $param_enabled, PDO::PARAM_STR);
           $insertfile_query->execute();
           $insertfile_query = null;

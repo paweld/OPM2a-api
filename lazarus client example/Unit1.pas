@@ -6,14 +6,15 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  fphttpclient, fpopenssl, openssl, base64;
+  fphttpclient, fpopenssl, openssl, base64, fpjson;
 
 type
 
   { TForm1 }
 
   TForm1 = class(TForm)
-    Button1: TButton;
+    bExec: TButton;
+    euuid: TEdit;
     eurl: TEdit;
     epassword: TEdit;
     elogin: TEdit;
@@ -26,11 +27,12 @@ type
     Label5: TLabel;
     Label6: TLabel;
     Label7: TLabel;
+    Label8: TLabel;
     linfo: TLabel;
     min: TMemo;
     mout: TMemo;
     rgcmd: TRadioGroup;
-    procedure Button1Click(Sender: TObject);
+    procedure bExecClick(Sender: TObject);
     procedure rgcmdClick(Sender: TObject);
   private
 
@@ -47,10 +49,11 @@ implementation
 
 { TForm1 }
 
-procedure TForm1.Button1Click(Sender: TObject);
+procedure TForm1.bExecClick(Sender: TObject);
 var
   Client: TFPHttpClient;
-  auth: String;
+  auth, s: string;
+  jobj: TJSONObject;
 begin
   if (eurl.Text = '') then
   begin
@@ -74,7 +77,7 @@ begin
     Client.RequestHeaders.Add('Authorization: Basic ' + auth);
   end;
   try
-    Client.AllowRedirect := true;
+    Client.AllowRedirect := True;
     case rgcmd.ItemIndex of
       0: mout.Lines.Text := Client.Get(eurl.Text + '/api.php?command=initdb');
       1: mout.Lines.Text := Client.Get(eurl.Text + '/api.php?package=' + epackage.Text);
@@ -82,8 +85,23 @@ begin
       3: mout.Lines.Text := Client.FormPost(eurl.Text + '/api.php', min.Lines.Text.Replace(#13#10, #10));
       4: mout.Lines.Text := Client.Get(eurl.Text + '/api.php?command=forceupdate&package=' + epackage.Text);
       5: mout.Lines.Text := Client.Get(eurl.Text + '/api.php?command=disable&package=' + epackage.Text);
-      6: mout.Lines.Text := Client.Put(eurl.Text + '/api.php?command=setrate&package=' + epackage.Text + '&rate=' + erate.Text);
+      6:
+      begin
+        if InputQuery('Set package rate', 'Enter your name:', s) then
+        begin
+          jobj := TJSONObject.Create;
+          jobj.Add('Author', s);
+          s := '';
+          if InputQuery('Set package rate', 'Enter your name:', s) then
+          begin
+            jobj.Add('Comment', s);
+            mout.Lines.Text := Client.FormPost(eurl.Text + '/api.php?command=setrate&package=' + epackage.Text +
+              '&rate=' + erate.Text + '&uuid=' + euuid.Text, jobj.FormatJSON([], 2));
+          end;
+        end;
+      end;
       7: mout.Lines.Text := Client.Get(eurl.Text + '/api.php?command=rating&package=' + epackage.Text);
+      8: mout.Lines.Text := Client.Get(eurl.Text + '/api.php?command=getcomments&package=' + epackage.Text);
     end;
   except
     Client.Free;
@@ -96,8 +114,8 @@ begin
   case rgcmd.ItemIndex of
     1, 2, 4, 7: linfo.Caption := 'if package name empty then all, otherwise just the package with the chosen name';
     3: linfo.Caption := 'required json input';
-    5: linfo.Caption := 'required package name';
-    6: linfo.Caption := 'required package name and rate';
+    5, 8: linfo.Caption := 'required package name';
+    6: linfo.Caption := 'required package name and rate, optionally author and comment';
   end;
 end;
 

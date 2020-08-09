@@ -47,13 +47,23 @@ CREATE TABLE IF NOT EXISTS permmited_file (
   PRIMARY KEY(package_id, file_name)
 );
 
+/*users*/
+CREATE TABLE IF NOT EXISTS users (
+  user_id INTEGER PRIMARY KEY,
+  uuid VARCHAR(64) NOT NULL UNIQUE,
+  Name VARCHAR(100) NOT NULL
+);
+
 /*rating history*/
 CREATE TABLE IF NOT EXISTS rating_history (
   rating_id INTEGER PRIMARY KEY,
   package_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
   ip_hash VARCHAR(32) NOT NULL,
   vote_time REAL NOT NULL,
-  rate TINYINT NOT NULL
+  Rate TINYINT NOT NULL,
+  [Comment] TEXT NOT NULL,
+  UNIQUE(package_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_rating_history ON rating_history (package_id ASC);
 CREATE TRIGGER IF NOT EXISTS update_rating AFTER INSERT ON rating_history FOR EACH ROW
@@ -63,7 +73,7 @@ BEGIN
     WHERE package_id = NEW.package_id;
 END;
 
-/*failed logins history*/
+/*failed admins login history*/
 CREATE TABLE IF NOT EXISTS login_history (
   ip_hash VARCHAR(32) NOT NULL PRIMARY KEY,
   login_time INTEGER NOT NULL,

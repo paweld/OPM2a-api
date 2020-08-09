@@ -5,23 +5,30 @@ Solution allows you to manage packages and automatically update packages from re
 
 **Features:**
 - possibility of automatic cloning from another package repository
-- has the ability to register package ratings
+- has the ability to register package ratings with comments. possible to change the comment and rating using unique user identity
 - automatic package updates (using cron)
 - automatically retrieves information about packages (author, description, version, license, required packages) from `lpk` files, hides the `lpk` file if it does not exist in the new zip file
 - automatically deletes files with illegal extensions, but it is possible to add exceptions (specific files)
 
 Available functions in `api.php`:
+
 **Only for administrator:**
 - `initdb` (*GET*) - initialization of the package database from the page specified in the configuration - only possible when the database is empty
 - `disable` (*GET*) - disable package export to packagelist.json. package name required.
 - `forceupdate` (*GET*) - forces download of package updates using related `update.json` file (all packages or just one with given name) and export the whole list. This is available by calling the update.php file, which can eventually be added to the cron so that updates are performed automatically
 - ` ` (*POST*) - adding or updating a package from a json file in the same format as `packagelist.json`
 - ` ` (*GET*) - get a list of all packages or only one with the given name
-- `ratinghistory` (*GET*) - retrieve package rating history
+- `ratinghistory` (*GET*) - retrieve package rating history with comments
 
 **For all:**
 - `rating` (*GET*) - retrieving ratings for packages or one with a given name
-- `setrate` (*PUT*) - adding a rating for a given package
+- `setrate` (*POST*) - adding a rating with comment for a given package. you can use the UUID to change the rating / comment or associate a new one with an existing user. example commen json:
+```json
+{
+  "Author" : "user1",
+  "Comment" : "very usefull package"
+}
+```
 
 Configuration (file paths, forbidden extensions, administrator login data [http basic authorization]) is in the file `opm.php`.
 

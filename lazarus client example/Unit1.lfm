@@ -9,7 +9,7 @@ object Form1: TForm1
   LCLVersion = '2.1.0.0'
   object rgcmd: TRadioGroup
     Left = 8
-    Height = 144
+    Height = 152
     Top = 8
     Width = 512
     AutoFill = True
@@ -21,7 +21,7 @@ object Form1: TForm1
     ChildSizing.ShrinkVertical = crsScaleChilds
     ChildSizing.Layout = cclLeftToRightThenTopToBottom
     ChildSizing.ControlsPerLine = 2
-    ClientHeight = 124
+    ClientHeight = 132
     ClientWidth = 508
     Columns = 2
     Items.Strings = (
@@ -31,8 +31,9 @@ object Form1: TForm1
       'ADMIN: add/update package'
       'ADMIN: force update packages info from update.json'
       'ADMIN: disable package'
-      'ALL: set rate'
+      'ALL: set / update rate and comment'
       'ALL: get rating list'
+      'ALL: get comments'
     )
     OnClick = rgcmdClick
     TabOrder = 0
@@ -116,7 +117,7 @@ object Form1: TForm1
       '  ]}'
     )
     ScrollBars = ssAutoVertical
-    TabOrder = 1
+    TabOrder = 7
   end
   object Label1: TLabel
     Left = 8
@@ -142,14 +143,14 @@ object Form1: TForm1
     Color = 15269887
     ReadOnly = True
     ScrollBars = ssAutoVertical
-    TabOrder = 2
+    TabOrder = 9
   end
   object epackage: TEdit
     Left = 640
     Height = 23
     Top = 8
     Width = 206
-    TabOrder = 3
+    TabOrder = 2
   end
   object Label3: TLabel
     Left = 536
@@ -172,50 +173,50 @@ object Form1: TForm1
     Height = 23
     Top = 40
     Width = 112
-    TabOrder = 4
+    TabOrder = 3
     TextHint = 'between 0 and 5'
   end
-  object Button1: TButton
+  object bExec: TButton
     Left = 536
     Height = 48
     Top = 137
     Width = 310
     Caption = 'Execute'
-    OnClick = Button1Click
-    TabOrder = 5
+    OnClick = bExecClick
+    TabOrder = 8
   end
   object Label5: TLabel
     Left = 536
     Height = 15
-    Top = 80
+    Top = 112
     Width = 75
     Caption = 'ADMIN Login:'
     ParentColor = False
   end
   object elogin: TEdit
-    Left = 640
+    Left = 615
     Height = 23
-    Top = 72
-    Width = 137
-    TabOrder = 6
+    Top = 104
+    Width = 89
+    TabOrder = 5
     Text = 'opm-admin'
   end
   object epassword: TEdit
-    Left = 640
+    Left = 760
     Height = 23
     Top = 104
-    Width = 136
+    Width = 86
     EchoMode = emPassword
     PasswordChar = '#'
-    TabOrder = 7
+    TabOrder = 6
     Text = '*6>S}bG4U!TL^s=2'
   end
   object Label6: TLabel
-    Left = 536
+    Left = 712
     Height = 15
     Top = 112
-    Width = 95
-    Caption = 'ADMIN Password:'
+    Width = 42
+    Caption = 'Passwd:'
     ParentColor = False
   end
   object linfo: TLabel
@@ -243,8 +244,23 @@ object Form1: TForm1
   object eurl: TEdit
     Left = 144
     Height = 23
-    Top = 159
+    Top = 160
     Width = 376
-    TabOrder = 8
+    TabOrder = 1
+  end
+  object Label8: TLabel
+    Left = 536
+    Height = 15
+    Top = 80
+    Width = 30
+    Caption = 'UUID:'
+    ParentColor = False
+  end
+  object euuid: TEdit
+    Left = 640
+    Height = 23
+    Top = 72
+    Width = 206
+    TabOrder = 4
   end
 end
