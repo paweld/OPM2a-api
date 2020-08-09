@@ -470,7 +470,7 @@ class OPM
         $rating_arr[$getrating_row['Name']] = array("Rating" => $getrating_row['Rating'], "RatingCount" => $getrating_row['RatingCount']);
       }
       $getrating_query = null;
-      $result = json_encode($rating_arr, JSON_PRETTY_PRINT);
+      $result = json_encode($rating_arr, JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK);
     }
     
     return $result;
@@ -570,7 +570,7 @@ class OPM
           $rating_arr = $checkrating_query->fetchAll(PDO::FETCH_ASSOC);
           $checkrating_query = null;
           $rating_arr = array('Your-UUID' => $uuid_tmp) + $rating_arr;
-          $result = json_encode($rating_arr, JSON_PRETTY_PRINT);
+          $result = json_encode($rating_arr, JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK);
         }
         else
         {
@@ -610,7 +610,7 @@ class OPM
         $comments_query->execute([$package_id]);
         $comments_arr = $comments_query->fetchAll(PDO::FETCH_ASSOC);
         $comments_query = null;
-        $result = json_encode(array($package_name => $comments_arr), JSON_PRETTY_PRINT);
+        $result = json_encode(array($package_name => $comments_arr), JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK);
       }
       else
       {
@@ -735,7 +735,7 @@ class OPM
     if ($dbs)
       $this->db = null;
     if (count($history_arr) > 0)
-      $result = json_encode($history_arr, JSON_PRETTY_PRINT);
+      $result = json_encode($history_arr, JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK);
     
     return $result;
   }
@@ -1348,7 +1348,7 @@ class OPM
     $json = '';
     if ($pkgdata_i > 0)
     {
-      $json = json_encode($pkglist_arr, JSON_PRETTY_PRINT);
+      $json = json_encode($pkglist_arr, JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK);
     }
     elseif (($admin) and ($package_name != ''))
     {
