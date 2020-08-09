@@ -79,3 +79,5 @@ example:
 ```
 
 Repackaging the archive and deleting forbidden files works only for packages updated with `update.json`
+
+*Required php modules: zip, xml, sqlite3.*
