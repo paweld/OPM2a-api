@@ -195,12 +195,22 @@ class OPM
     return $result;
   }
   
-  /*is string contains string*/
+  /*is string begin of pattern*/
   private function isBegins($s, $pattern)
   {
     $result = (strlen($s) > strlen($pattern));
     if ($result)
       $result = (substr($s, 0, strlen($pattern)) == $pattern);
+    
+    return $result;
+  }
+  
+  /*is string end on pattern*/
+  private function isEnding($s, $pattern)
+  {
+    $result = (strlen($s) > strlen($pattern));
+    if ($result)
+      $result = (substr($s, -strlen($pattern)) == $pattern);
     
     return $result;
   }
@@ -356,6 +366,32 @@ class OPM
     $result = (array_key_exists($key, $array) ? $array[$key] : $default);
     if (($result == '') && ($default_is_emty) && ($result != $default))
       $result = $default;
+    
+    return $result;
+  }
+  
+  /*download file*/
+  /*return array: file=>file_body time=>last_modified_date url=>real_url*/
+  /*or empty array if file not exists*/
+  private function getFileFormUrl($url)
+  {
+    $result = array();
+    $curl = curl_init();
+    curl_setopt($curl, CURLOPT_URL, $url);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_FILETIME, true);
+    $content = curl_exec($curl);
+    $response_code = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    $real_url = curl_getinfo($curl, CURLINFO_EFFECTIVE_URL);
+    $file_time = curl_getinfo($curl, CURLINFO_FILETIME);
+    curl_close($curl);
+    if ($response_code != 404)
+    {
+      $result['file'] = $content;
+      $result['time'] = $file_time;
+      $result['url'] = $real_url;
+    }
     
     return $result;
   }
@@ -816,7 +852,7 @@ class OPM
         $permfile_query = null;
       }
       
-      if ($package_file_date == 0)
+      if ($package_file_date < 0)
         $package_file_date = $this->datetimeToFloat(date('Y-m-d H:i:s'));
       
       $this->addLog(false, $package_file_name . ": clear excluded files, get lpk's list and zip package");
@@ -992,53 +1028,42 @@ class OPM
       $dbs = false;
       foreach ($pkgdata_arr as $pkgdata_row)
       {
-        $path_info = pathinfo($pkgdata_row['DownloadURL']);
-        $ext = $this->getArrayStrVal('extension', $path_info);
-        if ($ext == 'json')
+        if (($this->isEnding($pkgdata_row['DownloadURL'], '.json')) || ($this->isEnding($pkgdata_row['DownloadURL'], '.json/download')))
         {
           /*get update json*/
-          $jsonheader_arr = @get_headers($pkgdata_row['DownloadURL']);
-          if (!$jsonheader_arr || $jsonheader_arr[0] == 'HTTP/1.1 404 Not Found')
+          $jsonfile_arr = $this->getFileFormUrl($pkgdata_row['DownloadURL']);
+          if (count($jsonfile_arr) == 0)
           {
-            $this->addLog(true, $pkgdata_row['Name'] . ': update json file not exists: ' . $pkgdata_row['DownloadURL']);
+            $this->addLog(true, $pkgdata_row['Name'] . ': update.json file not exists: ' . $pkgdata_row['DownloadURL']);
           }
           else
           {
-            $pkg_json = file_get_contents($pkgdata_row['DownloadURL']);
+            $pkg_json = $jsonfile_arr['file'];
             $json_hash = md5($pkg_json);
             if ($json_hash != $pkgdata_row['update_json_hash'])
             {
               $this->updated_pkgs += 1;
               $this->addLog(false, 'update package: ' . $pkgdata_row['Name']);
               $pkg_arr = json_decode($pkg_json, true);
-              $pkg_zip_url = $pkg_arr['UpdatePackageData']['DownloadZipURL'];
-              $pkg_zip_tmp = $this->tmp_dir . basename($pkg_zip_url);
-              
+              $pkg_zip_url = $pkg_arr['UpdatePackageData']['DownloadZipURL'];              
               /*get package zip file*/
-              $this->addLog(false, 'download and unzip: ' . $pkg_arr['UpdatePackageData']['DownloadZipURL']);
-              $zipheader_arr = @get_headers($pkg_zip_url);
-              if (!$zipheader_arr || $zipheader_arr[0] == 'HTTP/1.1 404 Not Found')
+              $this->addLog(false, 'download and unzip: ' . $pkg_zip_url);
+              $zipfile_arr = $this->getFileFormUrl($pkg_zip_url);
+              if (count($zipfile_arr) == 0)
               {
-                $this->addLog(true, $pkgdata_row['Name'] . ': file not exists: ' . $pkg_zip_url);
+                $this->addLog(true, $pkgdata_row['Name'] . ': zip file not exists: ' . $pkg_zip_url);
               }
               else
               {
-                if (file_put_contents($pkg_zip_tmp, file_get_contents($pkg_zip_url))) 
+                $pkg_zip_tmp = $this->tmp_dir . $pkgdata_row['RepositoryFileName'];
+                if (file_put_contents($pkg_zip_tmp, $zipfile_arr['file'])) 
                 {
-                  $file_date = 0;
-                  foreach ($zipheader_arr as $value)
-                  {
-                    if ($this->isBegins($value, 'Last-Modified: '))
-                    {
-                      $file_date = $this->datetimeToFloat(str_replace('Last-Modified: ', '', $value,));
-                      break;
-                    }
-                  }
+                  $file_date = $zipfile_arr['time'];
                   $this->updatePkgFileFromZip($pkg_zip_tmp, $pkgdata_row['package_id'], $pkgdata_row['RepositoryFileName'], $file_date, $json_hash);
                 } 
                 else 
                 {
-                  $this->addLog(true, $pkgdata_row['Name'] . ': failed download file: ' . $pkg_zip_url);
+                  $this->addLog(true, $pkgdata_row['Name'] . ': failed save zip file: ' . $pkg_zip_tmp);
                 }
               }
             }
