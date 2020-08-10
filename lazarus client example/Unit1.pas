@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  fphttpclient, fpopenssl, openssl, base64, fpjson;
+  fphttpclient, fpopenssl, opensslsockets, base64, fpjson;
 
 type
 
@@ -65,11 +65,9 @@ begin
     ShowMessage('Choose a command');
     exit;
   end;
-
-  if pos('https://', LowerCase(eurl.Text)) > 0 then
-    InitSSLInterface;
-
+      
   Client := TFPHttpClient.Create(nil);
+
   //if admin add basic authentication
   if rgcmd.ItemIndex in [0..5] then
   begin
@@ -103,7 +101,7 @@ begin
       7: mout.Lines.Text := Client.Get(eurl.Text + '/api.php?command=rating&package=' + epackage.Text);
       8: mout.Lines.Text := Client.Get(eurl.Text + '/api.php?command=getcomments&package=' + epackage.Text);
     end;
-  except
+  finally
     Client.Free;
   end;
 end;
