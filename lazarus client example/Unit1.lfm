@@ -146,10 +146,10 @@ object Form1: TForm1
     TabOrder = 9
   end
   object epackage: TEdit
-    Left = 640
+    Left = 624
     Height = 23
     Top = 8
-    Width = 206
+    Width = 222
     TabOrder = 2
   end
   object Label3: TLabel
@@ -169,10 +169,10 @@ object Form1: TForm1
     ParentColor = False
   end
   object erate: TEdit
-    Left = 640
+    Left = 624
     Height = 23
     Top = 40
-    Width = 112
+    Width = 96
     TabOrder = 3
     TextHint = 'between 0 and 5'
   end
@@ -257,10 +257,11 @@ object Form1: TForm1
     ParentColor = False
   end
   object euuid: TEdit
-    Left = 640
+    Left = 624
     Height = 23
     Top = 72
-    Width = 206
+    Width = 222
     TabOrder = 4
+    TextHint = 'you will get after add rating, "Your-UUID" field'
   end
 end
