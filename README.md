@@ -12,26 +12,26 @@ Solution allows you to manage packages and automatically update packages from re
 
 Available functions in `api.php`:
 
-**Only for administrator:**
-- `initdb` (*GET*) - initialization of the package database from the page specified in the configuration - only possible when the database is empty
-- `disable` (*GET*) - disable package export to packagelist.json. package name required.
-- `forceupdate` (*GET*) - forces download of package updates using related `update.json` file (all packages or just one with given name) and export the whole list. This is available by calling the update.php file, which can eventually be added to the cron so that updates are performed automatically
-- ` ` (*POST*) - adding or updating a package from a json file in the same format as `packagelist.json`
-- ` ` (*GET*) - get a list of all packages or only one with the given name
-- `ratinghistory` (*GET*) - retrieve package rating history with comments
+Parameter `command` | Parameter `package` (package name) | Other params | Method | Description
+:---: | :---: | :---: | :---: | ---
+initdb | - | - | GET | *ONLY FOR ADMIN* initialization of the package database from the page specified in the configuration. **only possible when the database is empty**
+disable | *required* | - | GET | *ONLY FOR ADMIN* disable package export to packagelist.json.
+forceupdate | *optional* | - | GET | *ONLY FOR ADMIN* forces download of package updates using related `update.json` file (all packages or just one with given name) and export the whole list. This is available by calling the update.php file, which can eventually be added to the cron so that updates are performed automatically
+\- | *optional* | - | GET | *ONLY FOR ADMIN* get a list of all packages or only one with the given name
+ratinghistory | *optional* |  | GET | *ONLY FOR ADMIN* get package rating history with comments
+\- | - | - | POST | *ONLY FOR ADMIN* adding or updating a package from a json file in the same format as `packagelist.json` - [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#insert-or-update-packages-request)
+rating | *optional* | - | GET | *FOR ALL* retrieving ratings for packages or one with a given name
+getcomments | *required* | - | GET | *FOR ALL* get comments for packages
+setrate | *required* |`rate` **required** between 0 and 5 8<br/>`uuid` **optional** unique user ID| POST | *FOR ALL* adding a rating with comment for a given package. you can use the UUID to change the rating / comment or associate a new one with an existing user. [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#setrate%-request)
 
-**For all:**
-- `rating` (*GET*) - retrieving ratings for packages or one with a given name
-- `setrate` (*POST*) - adding a rating with comment for a given package. you can use the UUID to change the rating / comment or associate a new one with an existing user. example commen json:
+### setrate request
 ```json
 {
   "Author" : "user1",
   "Comment" : "very usefull package"
 }
 ```
-
-Configuration (file paths, forbidden extensions, administrator login data [http basic authorization]) is in the file `opm.php`.
-
+### insert or update package(s) request
 To update or add a new package, please send json in a format like `packagelist.json`. In addition to the standard ones, several additional fields are available:
 - `enabled` - show or hide a package or package file. The package file is set automatically on update time
 - `package_zip_base64` -base64 encoded package zip file contents
@@ -77,6 +77,7 @@ example:
   ]
 }
 ```
+Configuration (file paths, forbidden extensions, administrator login data [http basic authorization]) is in the file `opm.php`.
 
 Repackaging the archive and deleting forbidden files works only for packages updated with `update.json`
 
