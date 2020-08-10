@@ -384,7 +384,9 @@ class OPM
     $content = curl_exec($curl);
     $response_code = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     $real_url = curl_getinfo($curl, CURLINFO_EFFECTIVE_URL);
-    $file_time = curl_getinfo($curl, CURLINFO_FILETIME);
+    $tmpdt = new DateTime();
+    $tmpdt->setTimestamp(curl_getinfo($curl, CURLINFO_FILETIME));
+    $file_time = $this->datetimeToFloat($tmpdt->format('d-m-Y H:i:s'));
     curl_close($curl);
     if ($response_code != 404)
     {
