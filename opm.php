@@ -1292,7 +1292,16 @@ class OPM
         foreach($pkgdata_row as $key=>$value)
         {
           if (($admin) || (!in_array($key, array('package_id', 'enabled', 'update_json_hash'))))
-            $pkgdata_arr[$key] = $value;
+          {
+            if ($key == 'Rating')
+            {
+              $pkgdata_arr[$key] = intval(round($value));
+            }
+            else
+            {
+              $pkgdata_arr[$key] = $value;
+            }
+          }
         }
         $pkglist_arr['PackageData' . $pkgdata_i] = $pkgdata_arr;
         
