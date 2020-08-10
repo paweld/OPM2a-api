@@ -57,9 +57,8 @@ if (!isset($_SERVER['PHP_AUTH_USER']))
     case 'POST':
       if (($cmd == 'setrate') && (isset($_GET['rate'])))
       {
-        $uuid = (isset($_GET['uuid'])) ? $_GET['uuid'] : '';
         $json = file_get_contents('php://input');
-        $json_response = $opm->setRating($pkg_name, $uuid, $_GET['rate'], $json);
+        $json_response = $opm->setRating($pkg_name, $_GET['rate'], $json);
       } 
       break;
   }

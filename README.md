@@ -22,11 +22,12 @@ ratinghistory | *optional* |  | GET | *ONLY FOR ADMIN* get package rating histor
 \- | - | - | POST | *ONLY FOR ADMIN* adding or updating a package from a json file in the same format as `packagelist.json` - [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#insert-or-update-packages-request)
 rating | *optional* | - | GET | *FOR ALL* retrieving ratings for packages or one with a given name
 getcomments | *required* | - | GET | *FOR ALL* get comments for packages
-setrate | *required* |`rate` **required** between 0 and 5 8<br/>`uuid` **optional** unique user ID| POST | *FOR ALL* adding a rating with comment for a given package. you can use the UUID to change the rating / comment or associate a new one with an existing user. [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#setrate%-request)
+setrate | *required* |`rate` **required** between 0 and 5 8<br/>~~`uuid` **optional** unique user ID~~| POST | *FOR ALL* adding a rating with comment for a given package. you can use the UUID [moved to json] to change the rating / comment or associate a new one with an existing user. [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#setrate%-request)
 
 ### setrate request
 ```json
 {
+  "UUID" : "78juj2INUF4dDmxs",
   "Author" : "user1",
   "Comment" : "very usefull package"
 }

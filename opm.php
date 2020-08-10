@@ -515,25 +515,28 @@ class OPM
   }
   
   /*set rating*/
-  public function setRating($package_name, $uuid, $rate, $json)
+  public function setRating($package_name, $rate, $json)
   {
     $result = '';
     $package_id = 0;
     $user_id = 0;
-    $uuid_tmp = $uuid;
+    $request_arr = array();
+    if ($json != '')
+      $request_arr = json_decode($json, true);
+    $uuid = $this->getArrayStrVal('UUID', $request_arr);
     if (($package_name == '') || (!is_numeric($rate)) || ($rate < 0) || ($rate > 5))
     {
       $result = json_encode(array('status' => 'error', 'message' => 'Incorrect data'), JSON_PRETTY_PRINT);
     }
     else 
     {
-      if ($uuid_tmp != '')
+      if ($uuid != '')
       {
         $this->db = new PDO('sqlite:' . $this->cfg_db_file);
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $sql = " SELECT COUNT(1) cnt, IFNULL(MAX(user_id), 0) uid FROM users WHERE uuid = ? ";
         $checkuser_query = $this->db->prepare($sql);
-        $checkuser_query->execute([$uuid_tmp]);
+        $checkuser_query->execute([$uuid]);
         $user_id = $checkuser_query->fetch(PDO::FETCH_ASSOC)['uid'];
         $checkuser_query = null;
         if ($user_id == 0)
@@ -549,8 +552,6 @@ class OPM
         $package_id = $check_query->fetch(PDO::FETCH_ASSOC)['pid'];
         $check_query = null;
         $comment_arr = array();
-        if ($json != '')
-          $comment_arr = json_decode($json, true);
         if ($package_id > 0)
         {
           $ip = md5($this->getClientIP());
@@ -560,21 +561,21 @@ class OPM
           {
             $sql = " INSERT INTO users (uuid, Name) ";
             $sql .= " VALUES (:uuid, :name) ";
-            $uuid_tmp = date('Y-m-d H:i:s') . $ip;
+            $uuid = date('Y-m-d H:i:s') . $ip;
             for ($i = 0; $i < 16; $i++)
             {
-              $uuid_tmp .= chr(rand(32, 126));
+              $uuid .= chr(rand(32, 126));
             }
-            $uuid_tmp = hash('sha256', $uuid_tmp);
+            $uuid = hash('sha256', $uuid);
             $this->db = new PDO('sqlite:' . $this->cfg_db_file);
             $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $adduser_query = $this->db->prepare($sql);
-            $adduser_query->bindParam(':uuid', $uuid_tmp, PDO::PARAM_STR);
+            $adduser_query->bindParam(':uuid', $uuid, PDO::PARAM_STR);
             $adduser_query->bindParam(':name', $user_name, PDO::PARAM_STR);
             $adduser_query->execute();
             $sql = " SELECT user_id FROM users WHERE uuid = ? ";
             $getuser_query = $this->db->prepare($sql);
-            $getuser_query->execute([$uuid_tmp]);
+            $getuser_query->execute([$uuid]);
             $user_id = $getuser_query->fetch(PDO::FETCH_ASSOC)['user_id'];
             $getuser_query = null;
           }
@@ -607,7 +608,7 @@ class OPM
           $checkrating_query->execute([$package_id]);
           $rating_arr = $checkrating_query->fetchAll(PDO::FETCH_ASSOC);
           $checkrating_query = null;
-          $rating_arr = array('Your-UUID' => $uuid_tmp) + $rating_arr;
+          $rating_arr = array('Your-UUID' => $uuid) + $rating_arr;
           $result = json_encode($rating_arr, JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK);
         }
         else

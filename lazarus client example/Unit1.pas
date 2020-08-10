@@ -88,13 +88,14 @@ begin
         if InputQuery('Set package rate', 'Enter your name:', s) then
         begin
           jobj := TJSONObject.Create;
+          jobj.Add('UUID', euuid.Text);
           jobj.Add('Author', s);
           s := '';
           if InputQuery('Set package rate', 'Enter your name:', s) then
           begin
             jobj.Add('Comment', s);
             mout.Lines.Text := Client.FormPost(eurl.Text + '/api.php?command=setrate&package=' + epackage.Text +
-              '&rate=' + erate.Text + '&uuid=' + euuid.Text, jobj.FormatJSON([], 2));
+              '&rate=' + erate.Text, jobj.FormatJSON([], 2));
           end;
         end;
       end;
