@@ -19,10 +19,10 @@ disable | *required* | - | GET | *ONLY FOR ADMIN* disable package export to pack
 forceupdate | *optional* | - | GET | *ONLY FOR ADMIN* forces download of package updates using related `update.json` file (all packages or just one with given name) and export the whole list. This is available by calling the update.php file, which can eventually be added to the cron so that updates are performed automatically
 \- | *optional* | - | GET | *ONLY FOR ADMIN* get a list of all packages or only one with the given name
 ratinghistory | *optional* |  | GET | *ONLY FOR ADMIN* get package rating history with comments
-\- | - | - | POST | *ONLY FOR ADMIN* adding or updating a package from a json file in the same format as `packagelist.json` - [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#insert%20or%20update%20package(s)%20request)
+\- | - | - | POST | *ONLY FOR ADMIN* adding or updating a package from a json file in the same format as `packagelist.json` - [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#insert-or-update-packages-request)
 rating | *optional* | - | GET | *FOR ALL* retrieving ratings for packages or one with a given name
 getcomments | *required* | - | GET | *FOR ALL* get comments for packages
-setrate | *required* |`rate` **required** between 0 and 5 8<br/>`uuid` **optional** unique user ID| POST | *FOR ALL* adding a rating with comment for a given package. you can use the UUID to change the rating / comment or associate a new one with an existing user. [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#setrate%20request)
+setrate | *required* |`rate` **required** between 0 and 5 8<br/>`uuid` **optional** unique user ID| POST | *FOR ALL* adding a rating with comment for a given package. you can use the UUID to change the rating / comment or associate a new one with an existing user. [post json](https://github.com/paweld/OPM2a-api/blob/master/README.md#setrate%-request)
 
 ### setrate request
 ```json
