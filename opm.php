@@ -164,7 +164,7 @@ class OPM
         $sql .= "  ip_hash VARCHAR(32) NOT NULL, ";
         $sql .= "  vote_time REAL NOT NULL,";
         $sql .= "  Rate TINYINT NOT NULL, ";
-        $sql .= "  [Comment] TINYINT NOT NULL, ";
+        $sql .= "  [Comment] TEXT NOT NULL, ";
         $sql .= "  UNIQUE(package_id, user_id) ";
         $sql .= "); ";
         $this->db->exec($sql);
@@ -524,6 +524,8 @@ class OPM
     if ($json != '')
       $request_arr = json_decode($json, true);
     $uuid = $this->getArrayStrVal('UUID', $request_arr);
+    $user_name = $this->getArrayStrVal('Author', $request_arr, '[Anonymous]', true);
+    $comment = $this->getArrayStrVal('Comment', $request_arr); 
     if (($package_name == '') || (!is_numeric($rate)) || ($rate < 0) || ($rate > 5))
     {
       $result = json_encode(array('status' => 'error', 'message' => 'Incorrect data'), JSON_PRETTY_PRINT);
@@ -555,8 +557,6 @@ class OPM
         if ($package_id > 0)
         {
           $ip = md5($this->getClientIP());
-          $user_name = $this->getArrayStrVal('Author', $comment_arr, '[Anonymous]', true);
-          $comment = $this->getArrayStrVal('Comment', $comment_arr); 
           if ($user_id == 0)
           {
             $sql = " INSERT INTO users (uuid, Name) ";

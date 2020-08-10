@@ -91,7 +91,7 @@ begin
           jobj.Add('UUID', euuid.Text);
           jobj.Add('Author', s);
           s := '';
-          if InputQuery('Set package rate', 'Enter your name:', s) then
+          if InputQuery('Set package rate', 'Enter comment:', s) then
           begin
             jobj.Add('Comment', s);
             mout.Lines.Text := Client.FormPost(eurl.Text + '/api.php?command=setrate&package=' + epackage.Text +
