@@ -875,7 +875,7 @@ class OPM
             if (file_exists($file))
               unlink($file);
             unset($files_arr[$key]);
-            $deleted_files_arr[] = $file;
+            $deleted_files_arr[] = str_replace($unzipped_dir, '', $file);
           }
           else
           {
