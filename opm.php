@@ -1045,28 +1045,31 @@ class OPM
             $json_hash = md5($pkg_json);
             if ($json_hash != $pkgdata_row['update_json_hash'])
             {
-              $this->updated_pkgs += 1;
-              $this->addLog(false, 'update package: ' . $pkgdata_row['Name']);
               $pkg_arr = json_decode($pkg_json, true);
-              $pkg_zip_url = $pkg_arr['UpdatePackageData']['DownloadZipURL'];              
+              $pkg_zip_url = $pkg_arr['UpdatePackageData']['DownloadZipURL'];         
               /*get package zip file*/
-              $this->addLog(false, 'download and unzip: ' . $pkg_zip_url);
-              $zipfile_arr = $this->getFileFormUrl($pkg_zip_url);
-              if (count($zipfile_arr) == 0)
+              if ($pkg_zip_url != '')
               {
-                $this->addLog(true, $pkgdata_row['Name'] . ': zip file not exists: ' . $pkg_zip_url);
-              }
-              else
-              {
-                $pkg_zip_tmp = $this->tmp_dir . $pkgdata_row['RepositoryFileName'];
-                if (file_put_contents($pkg_zip_tmp, $zipfile_arr['file'])) 
+                $this->updated_pkgs += 1;
+                $this->addLog(false, 'update package: ' . $pkgdata_row['Name']);     
+                $this->addLog(false, 'download and unzip: ' . $pkg_zip_url);
+                $zipfile_arr = $this->getFileFormUrl($pkg_zip_url);
+                if (count($zipfile_arr) == 0)
                 {
-                  $file_date = $zipfile_arr['time'];
-                  $this->updatePkgFileFromZip($pkg_zip_tmp, $pkgdata_row['package_id'], $pkgdata_row['RepositoryFileName'], $file_date, $json_hash);
-                } 
-                else 
+                  $this->addLog(true, $pkgdata_row['Name'] . ': zip file not exists: ' . $pkg_zip_url);
+                }
+                else
                 {
-                  $this->addLog(true, $pkgdata_row['Name'] . ': failed save zip file: ' . $pkg_zip_tmp);
+                  $pkg_zip_tmp = $this->tmp_dir . $pkgdata_row['RepositoryFileName'];
+                  if (file_put_contents($pkg_zip_tmp, $zipfile_arr['file'])) 
+                  {
+                    $file_date = $zipfile_arr['time'];
+                    $this->updatePkgFileFromZip($pkg_zip_tmp, $pkgdata_row['package_id'], $pkgdata_row['RepositoryFileName'], $file_date, $json_hash);
+                  } 
+                  else 
+                  {
+                    $this->addLog(true, $pkgdata_row['Name'] . ': failed save zip file: ' . $pkg_zip_tmp);
+                  }
                 }
               }
             }
