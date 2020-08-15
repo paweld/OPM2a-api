@@ -384,9 +384,17 @@ class OPM
     $content = curl_exec($curl);
     $response_code = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     $real_url = curl_getinfo($curl, CURLINFO_EFFECTIVE_URL);
-    $tmpdt = new DateTime();
-    $tmpdt->setTimestamp(curl_getinfo($curl, CURLINFO_FILETIME));
-    $file_time = $this->datetimeToFloat($tmpdt->format('d-m-Y H:i:s'));
+    $file_time = curl_getinfo($curl, CURLINFO_FILETIME);
+    if($file_time < 0)
+    {
+      $file_time = $this->datetimeToFloat(date('Y-m-d H:i:s'));
+    }
+    else
+    {
+      $tmpdt = new DateTime();
+      $tmpdt->setTimestamp();
+      $file_time = $this->datetimeToFloat($tmpdt->format('d-m-Y H:i:s'));
+    }
     curl_close($curl);
     if ($response_code != 404)
     {
@@ -854,9 +862,6 @@ class OPM
       {
         $permfile_query = null;
       }
-      
-      if ($package_file_date < 0)
-        $package_file_date = $this->datetimeToFloat(date('Y-m-d H:i:s'));
       
       $this->addLog(false, $package_file_name . ": clear excluded files, get lpk's list and zip package");
       $zip = new ZipArchive();
